@@ -1,0 +1,30 @@
+{
+    "name": "juizmill/ZendPdo",
+    "description": "Módulo que trabalha direto com PDO em conjunto com ZF 2",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "module",
+        "zf2",
+        "ZendPdo",
+        "PDO",
+        "banco"
+    ],
+    "homepage": "http://framework.zend.com",
+    "authors": [
+        {
+            "name": "juizmill",
+            "email": "jesusvieiradelima@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.3",
+        "zendframework/zendframework": "2.*@stable"
+    },
+    "autoload": {
+        "psr-0": {
+            "ZendPdo": "src/"
+        }
+    }
+
+}
