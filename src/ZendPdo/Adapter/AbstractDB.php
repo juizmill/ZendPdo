@@ -22,9 +22,6 @@ abstract class AbstractDB
     {
         $this->db = $db;
         $this->table = $table;
-
-        if ($this->db->getDriver()->getConnection()->isConnected())
-            $this->db->getDriver()->getConnection()->disconnect();
     }
 
     /**
@@ -36,6 +33,7 @@ abstract class AbstractDB
     public function findBy(Array $where = array())
     {
         try{
+            $this->db->getDriver()->getConnection()->connect();
             $this->db->getDriver()->getConnection()->beginTransaction();
 
             $column = array_keys($where);
@@ -68,6 +66,7 @@ abstract class AbstractDB
     public function findAll()
     {
         try{
+            $this->db->getDriver()->getConnection()->connect();
             $this->db->getDriver()->getConnection()->beginTransaction();
 
             //Comando SQL
@@ -95,6 +94,7 @@ abstract class AbstractDB
     public function insert(Array $data = array())
     {
         try{
+            $this->db->getDriver()->getConnection()->connect();
             $this->db->getDriver()->getConnection()->beginTransaction();
 
             //Filtando as entradas das colunas
@@ -134,6 +134,7 @@ abstract class AbstractDB
     public function update(Array $data = array(), Array $where = array())
     {
         try{
+            $this->db->getDriver()->getConnection()->connect();
             $this->db->getDriver()->getConnection()->beginTransaction();
 
             //Filtando as entradas das colunas
@@ -173,6 +174,7 @@ abstract class AbstractDB
     public function delete(Array $where = array())
     {
         try{
+            $this->db->getDriver()->getConnection()->connect();
             $this->db->getDriver()->getConnection()->beginTransaction();
 
             $column = array_keys($where);
