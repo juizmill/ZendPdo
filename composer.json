@@ -1,5 +1,5 @@
 {
-    "name": "juizmill/ZendPdo",
+    "name": "juizmill/Zend-pdo",
     "description": "Módulo que trabalha direto com PDO em conjunto com ZF 2",
     "type": "library",
     "license": "MIT",
