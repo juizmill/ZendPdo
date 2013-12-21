@@ -1,6 +1,7 @@
 <?php
 namespace ZendPdo\Adapter;
 
+use Zend\Db\ResultSet\ResultSet;
 use Zend\Db\Adapter\Adapter;
 use Exception as DBException;
 
@@ -40,17 +41,17 @@ abstract class AbstractDB
             $value = array_values($where);
 
             $whereColumn = $column[0];
-            $whereValue = $this->db->getPlatform()->quoteValue($value[0]);
+            $whereValue = $this->db->getPlatform()->quoteTrustedValue($value[0]);
 
             //Comando SQL
             $sql = "SELECT * FROM {$this->table} WHERE {$whereColumn} = {$whereValue};";
 
             //Executando SQL
-            $select = $this->db->query($sql, Adapter::QUERY_MODE_EXECUTE);
-            $this->db->getDriver()->getConnection()->commit();
+            $resultSet = new ResultSet();
+            $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
             $this->db->getDriver()->getConnection()->disconnect();
 
-            return $select->toArray();
+            return $result;
 
         }catch (DBException $e){
             $e->getTraceAsString();
@@ -73,11 +74,11 @@ abstract class AbstractDB
             $sql = "SELECT * FROM {$this->table};";
 
             //Executando SQL
-            $select = $this->db->query($sql, Adapter::QUERY_MODE_EXECUTE);
-            $this->db->getDriver()->getConnection()->commit();
+            $resultSet = new ResultSet();
+            $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
             $this->db->getDriver()->getConnection()->disconnect();
 
-            return $select->toArray();
+            return $result;
 
         }catch (DBException $e){
             $e->getTraceAsString();
@@ -103,7 +104,7 @@ abstract class AbstractDB
 
             //Filtando as entradas dos valores
             foreach(array_values($data) as $value)
-                $values[] = $this->db->getPlatform()->quoteValue($value);
+                $values[] = $this->db->getPlatform()->quoteTrustedValue($value);
 
             $column = implode(',', $column);
             $value = implode(',', $values);
@@ -139,7 +140,7 @@ abstract class AbstractDB
 
             //Filtando as entradas das colunas
             foreach($data as $column => $value)
-                $line[] = $column . ' = '. $this->db->getPlatform()->quoteValue($value);
+                $line[] = $column . ' = '. $this->db->getPlatform()->quoteTrustedValue($value);
 
             $set = implode(',', $line);
 
@@ -147,7 +148,7 @@ abstract class AbstractDB
             $value = array_values($where);
 
             $whereColumn = $column[0];
-            $whereValue = $this->db->getPlatform()->quoteValue($value[0]);
+            $whereValue = $this->db->getPlatform()->quoteTrustedValue($value[0]);
 
             //Comando SQL
             $sql = "UPDATE {$this->table} SET {$set} WHERE {$whereColumn} = {$whereValue};";
@@ -181,7 +182,7 @@ abstract class AbstractDB
             $value = array_values($where);
 
             $whereColumn = $column[0];
-            $whereValue = $this->db->getPlatform()->quoteValue($value[0]);
+            $whereValue = $this->db->getPlatform()->quoteTrustedValue($value[0]);
 
             //Comando SQL
             $sql = "DELETE FROM {$this->table} WHERE {$whereColumn} = {$whereValue};";
