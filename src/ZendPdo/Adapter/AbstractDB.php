@@ -21,7 +21,7 @@ abstract class AbstractDB
     public function __construct(Adapter $db, $table)
     {
         $this->db = $db;
-        $this->table = $this->db->getPlatform()->quoteIdentifierChain($table);
+        $this->table = $table;
 
         if ($this->db->getDriver()->getConnection()->isConnected())
             $this->db->getDriver()->getConnection()->disconnect();
@@ -41,7 +41,7 @@ abstract class AbstractDB
             $column = array_keys($where);
             $value = array_values($where);
 
-            $whereColumn = $this->db->getPlatform()->quoteIdentifierChain($column[0]);
+            $whereColumn = $column[0];
             $whereValue = $this->db->getPlatform()->quoteValue($value[0]);
 
             //Comando SQL
@@ -99,7 +99,7 @@ abstract class AbstractDB
 
             //Filtando as entradas das colunas
             foreach(array_keys($data) as $value)
-                $column[] = $this->db->getPlatform()->quoteIdentifierChain($value);
+                $column[] = $value;
 
             //Filtando as entradas dos valores
             foreach(array_values($data) as $value)
@@ -138,14 +138,14 @@ abstract class AbstractDB
 
             //Filtando as entradas das colunas
             foreach($data as $column => $value)
-                $line[] = $this->db->getPlatform()->quoteIdentifierChain($column) . ' = '. $this->db->getPlatform()->quoteValue($value);
+                $line[] = $column . ' = '. $this->db->getPlatform()->quoteValue($value);
 
             $set = implode(',', $line);
 
             $column = array_keys($where);
             $value = array_values($where);
 
-            $whereColumn = $this->db->getPlatform()->quoteIdentifierChain($column[0]);
+            $whereColumn = $column[0];
             $whereValue = $this->db->getPlatform()->quoteValue($value[0]);
 
             //Comando SQL
@@ -178,7 +178,7 @@ abstract class AbstractDB
             $column = array_keys($where);
             $value = array_values($where);
 
-            $whereColumn = $this->db->getPlatform()->quoteIdentifierChain($column[0]);
+            $whereColumn = $column[0];
             $whereValue = $this->db->getPlatform()->quoteValue($value[0]);
 
             //Comando SQL
