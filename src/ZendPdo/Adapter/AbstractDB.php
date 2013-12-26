@@ -51,7 +51,13 @@ abstract class AbstractDB
             $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
             $this->db->getDriver()->getConnection()->disconnect();
 
-            return $result;
+            //Converte os Valores para UTF-8
+            $encodedArray = array();
+            foreach ($result as $value) {
+                $encodedArray[] = array_map('trim',array_map('utf8_encode', $value));
+            }
+
+            return $encodedArray;
 
         }catch (DBException $e){
             $e->getTraceAsString();
@@ -78,7 +84,13 @@ abstract class AbstractDB
             $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
             $this->db->getDriver()->getConnection()->disconnect();
 
-            return $result;
+            //Converte os Valores para UTF-8
+            $encodedArray = array();
+            foreach ($result as $value) {
+                $encodedArray[] = array_map('trim',array_map('utf8_encode', $value));
+            }
+
+            return $encodedArray;
 
         }catch (DBException $e){
             $e->getTraceAsString();
@@ -192,7 +204,10 @@ abstract class AbstractDB
             $this->db->getDriver()->getConnection()->commit();
             $this->db->getDriver()->getConnection()->disconnect();
 
-            return $delete;
+            if ($delete)
+                return true;
+            else
+                return false;
 
         }catch (DBException $e){
             $e->getTraceAsString();
