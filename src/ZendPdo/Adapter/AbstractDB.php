@@ -102,9 +102,10 @@ abstract class AbstractDB
      * insert insere registro
      *
      * @param array $data
-     * @return \Zend\Db\Adapter\Driver\StatementInterface|\Zend\Db\ResultSet\ResultSet
+     * @param null $lastinsert
+     * @return \Zend\Db\Adapter\Driver\StatementInterface|ResultSet
      */
-    public function insert(Array $data = array())
+    public function insert(Array $data = array(), $lastinsert = null)
     {
         try{
             $this->db->getDriver()->getConnection()->connect();
@@ -122,11 +123,22 @@ abstract class AbstractDB
             $value = implode(',', $values);
 
             //Comando SQL
-            $sql = "INSERT INTO {$this->table} ({$column}) VALUES ({$value});";
+            if ($lastinsert){
 
-            //Executando SQL
-            $insert = $this->db->query($sql, Adapter::QUERY_MODE_EXECUTE);
-            $this->db->getDriver()->getConnection()->commit();
+                $sql = "INSERT INTO {$this->table} ({$column}) VALUES ({$value})  returning {$lastinsert};";
+
+                $resultSet = new ResultSet();
+                $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
+                $insert = $result[0][strtoupper($lastinsert)];
+
+            }else{
+                $sql = "INSERT INTO {$this->table} ({$column}) VALUES ({$value});";
+
+                //Executando SQL
+                $insert = $this->db->query($sql, Adapter::QUERY_MODE_EXECUTE);
+                $this->db->getDriver()->getConnection()->commit();
+            }
+
             $this->db->getDriver()->getConnection()->disconnect();
 
             return $insert;
