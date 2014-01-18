@@ -41,7 +41,7 @@ abstract class AbstractDB
             $value = array_values($where);
 
             $whereColumn = $column[0];
-            $whereValue = $this->db->getPlatform()->quoteTrustedValue($value[0]);
+            $whereValue = $value[0];
 
             //Comando SQL
             $sql = "SELECT * FROM {$this->table} WHERE {$whereColumn} = {$whereValue};";
@@ -117,7 +117,7 @@ abstract class AbstractDB
 
             //Filtando as entradas dos valores
             foreach(array_values($data) as $value)
-                $values[] = $this->db->getPlatform()->quoteTrustedValue($value);
+                $values[] = $this->quote($value);
 
             $column = implode(',', $column);
             $value = implode(',', $values);
@@ -164,7 +164,7 @@ abstract class AbstractDB
 
             //Filtando as entradas das colunas
             foreach($data as $column => $value)
-                $line[] = $column . ' = '. $this->db->getPlatform()->quoteTrustedValue($value);
+                $line[] = $column . ' = '. $this->quote($value);
 
             $set = implode(',', $line);
 
@@ -172,7 +172,7 @@ abstract class AbstractDB
             $value = array_values($where);
 
             $whereColumn = $column[0];
-            $whereValue = $this->db->getPlatform()->quoteTrustedValue($value[0]);
+            $whereValue = $value[0];
 
             //Comando SQL
             $sql = "UPDATE {$this->table} SET {$set} WHERE {$whereColumn} = {$whereValue};";
@@ -206,7 +206,7 @@ abstract class AbstractDB
             $value = array_values($where);
 
             $whereColumn = $column[0];
-            $whereValue = $this->db->getPlatform()->quoteTrustedValue($value[0]);
+            $whereValue = $value[0];
 
             //Comando SQL
             $sql = "DELETE FROM {$this->table} WHERE {$whereColumn} = {$whereValue};";
@@ -225,6 +225,15 @@ abstract class AbstractDB
             $e->getTraceAsString();
             $this->db->getDriver()->getConnection()->rollback();
         }
+    }
+
+    /**
+     * @param $str
+     * @return mixed
+     */
+    public function quote($str)
+    {
+        return "'".str_replace("'", "''", $str)."'";
     }
 
 }
