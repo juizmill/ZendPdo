@@ -1,9 +1,7 @@
 <?php
 namespace ZendPdo\Adapter;
 
-use Zend\Db\ResultSet\ResultSet;
-use Zend\Db\Adapter\Adapter;
-use Exception as DBException;
+use PDOException;
 
 /**
  * Class AbstractDB
@@ -13,16 +11,28 @@ abstract class AbstractDB
 {
 
     protected $table;
+
+    /**
+     * @var $db \PDO
+     */
     protected $db;
 
     /**
-     * @param Adapter $db
+     * @param array $options
      * @param $table
      */
-    public function __construct(Adapter $db, $table)
+    public function __construct(Array $options, $table)
     {
-        $this->db = $db;
-        $this->table = $table;
+        try{
+            Transaction::Open($options);
+            $this->db = Transaction::get();
+            $this->table = $table;
+
+        }catch (PDOException $e){
+            echo $e->getTraceAsString();
+            Transaction::rollback();
+        }
+
     }
 
     /**
@@ -31,37 +41,34 @@ abstract class AbstractDB
      * @param array $where
      * @return array
      */
-    public function findBy(Array $where = array())
+    public function findBy(Array $where)
     {
         try{
-            $this->db->getDriver()->getConnection()->connect();
-            $this->db->getDriver()->getConnection()->beginTransaction();
 
             $column = array_keys($where);
             $value = array_values($where);
 
-            $whereColumn = $column[0];
-            $whereValue = $value[0];
-
             //Comando SQL
-            $sql = "SELECT * FROM {$this->table} WHERE {$whereColumn} = {$whereValue};";
+            $sql = "SELECT * FROM {$this->table} WHERE  {$column[0]}= :value";
 
             //Executando SQL
-            $resultSet = new ResultSet();
-            $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
-            $this->db->getDriver()->getConnection()->disconnect();
+            $query = $this->db->prepare($sql);
+            $query->bindValue(":value", $value[0], \PDO::PARAM_STR);
+            $query->execute();
+            $result = $query->fetchAll(\PDO::FETCH_ASSOC);
+            $query->closeCursor();
+            Transaction::close();
 
             //Converte os Valores para UTF-8
             $encodedArray = array();
             foreach ($result as $value) {
                 $encodedArray[] = array_map('trim',array_map('utf8_encode', $value));
             }
-
             return $encodedArray;
 
-        }catch (DBException $e){
+        }catch (PDOException $e){
             $e->getTraceAsString();
-            $this->db->getDriver()->getConnection()->rollback();
+            Transaction::rollback();
         }
     }
 
@@ -73,122 +80,128 @@ abstract class AbstractDB
     public function findAll()
     {
         try{
-            $this->db->getDriver()->getConnection()->connect();
-            $this->db->getDriver()->getConnection()->beginTransaction();
-
             //Comando SQL
             $sql = "SELECT * FROM {$this->table};";
 
             //Executando SQL
-            $resultSet = new ResultSet();
-            $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
-            $this->db->getDriver()->getConnection()->disconnect();
+            $query = $this->db->prepare($sql);
+            $query->execute();
+            $result = $query->fetchAll(\PDO::FETCH_ASSOC);
+            $query->closeCursor();
+            Transaction::close();
 
             //Converte os Valores para UTF-8
             $encodedArray = array();
             foreach ($result as $value) {
                 $encodedArray[] = array_map('trim',array_map('utf8_encode', $value));
             }
-
             return $encodedArray;
 
-        }catch (DBException $e){
-            $e->getTraceAsString();
-            $this->db->getDriver()->getConnection()->rollback();
+        }catch (PDOException $e){
+            echo $e->getTraceAsString();
+            Transaction::rollback();
         }
     }
 
-    /**
-     * insert insere registro
-     *
-     * @param array $data
-     * @param null $lastinsert
-     * @return \Zend\Db\Adapter\Driver\StatementInterface|ResultSet
-     */
+
+    /*
     public function insert(Array $data = array(), $lastinsert = null)
     {
         try{
-            $this->db->getDriver()->getConnection()->connect();
-            $this->db->getDriver()->getConnection()->beginTransaction();
+            //Cria os parâmetros
+            $param = array();
+            for($x =1; $x <= count($data); $x++){
+                $param[] = ":val".$x;
+            }
 
-            //Filtando as entradas das colunas
-            foreach(array_keys($data) as $value)
-                $column[] = $value;
-
-            //Filtando as entradas dos valores
-            foreach(array_values($data) as $value)
-                $values[] = $this->quote($value);
-
-            $column = implode(',', $column);
-            $value = implode(',', $values);
+            //Define colunas, valores e parâmetros
+            $column = implode(',', array_keys($data));
+            $value = array_values($data);
+            $param = implode(',', array_values($param));
 
             //Comando SQL
             if ($lastinsert){
 
-                $sql = "INSERT INTO {$this->table} ({$column}) VALUES ({$value})  returning {$lastinsert};";
-
-                $resultSet = new ResultSet();
-                $result = $resultSet->initialize($this->db->getDriver()->getConnection()->execute($sql))->toArray();
-                $insert = $result[0][strtoupper($lastinsert)];
-
-            }else{
-                $sql = "INSERT INTO {$this->table} ({$column}) VALUES ({$value});";
+                $sql = "INSERT INTO {$this->table} ({$column}) VALUES ({$param})  returning {$lastinsert};";
 
                 //Executando SQL
-                $insert = $this->db->query($sql, Adapter::QUERY_MODE_EXECUTE);
-                $this->db->getDriver()->getConnection()->commit();
+                $query = $this->db->prepare($sql);
+                $y = 0;
+                for($x =1; $x <= count($data); $x++){
+                    $arg = mb_convert_encoding(mb_convert_case($value[$y],MB_CASE_UPPER, "UTF-8"),'ISO-8859-1', 'UTF-8');
+                    $query->bindValue(":val".$x, $arg, \PDO::PARAM_STR);
+                    $y++;
+                }
+
+                $query->execute();
+                $result = $query->fetch(\PDO::FETCH_ASSOC);
+                Transaction::close();
+
+                return $result;
+
+            }else{
+                $sql = "INSERT INTO {$this->table} ({$column}) VALUES ({$param});";
+
+                //Executando SQL
+                $query = $this->db->prepare($sql);
+                $y = 0;
+                for($x = 1; $x <= count($data); $x++){
+                    $arg = mb_convert_encoding(mb_convert_case($value[$y],MB_CASE_UPPER, "UTF-8"),'ISO-8859-1', 'UTF-8');
+                    $query->bindValue(":val".$x, $arg, \PDO::PARAM_STR);
+                    $y++;
+                }
+                $query->execute();
+                Transaction::close();
+
+                return true;
             }
 
-            $this->db->getDriver()->getConnection()->disconnect();
-
-            return $insert;
-
-        }catch (DBException $e){
-            $e->getTraceAsString();
-            $this->db->getDriver()->getConnection()->rollback();
+        }catch (PDOException $e){
+            echo $e->getTraceAsString();
+            Transaction::rollback();
         }
     }
 
-    /**
-     * update atualiza registro
-     *
-     * @param array $data
-     * @param array $where
-     * @return \Zend\Db\Adapter\Driver\StatementInterface|\Zend\Db\ResultSet\ResultSet
-     */
     public function update(Array $data = array(), Array $where = array())
     {
         try{
-            $this->db->getDriver()->getConnection()->connect();
-            $this->db->getDriver()->getConnection()->beginTransaction();
+            //Define colunas, valores e parâmetros
+            $column = array_keys($data);
+            $value = array_values($data);
+            $whereColumn = array_keys($where);
+            $whereValue = array_values($where);
 
-            //Filtando as entradas das colunas
-            foreach($data as $column => $value)
-                $line[] = $column . ' = '. $this->quote($value);
-
+            $y = 0;
+            for($x = 1; $x<= count($data); $x++){
+                $line[] = $column[$y] . ' = '. ':val'.$x;
+                $y++;
+            }
             $set = implode(',', $line);
 
-            $column = array_keys($where);
-            $value = array_values($where);
-
-            $whereColumn = $column[0];
-            $whereValue = $value[0];
-
             //Comando SQL
-            $sql = "UPDATE {$this->table} SET {$set} WHERE {$whereColumn} = {$whereValue};";
+            $sql = "UPDATE {$this->table} SET {$set} WHERE {$whereColumn[0]} = :valWhere;";
 
             //Executando SQL
-            $update = $this->db->query($sql, Adapter::QUERY_MODE_EXECUTE);
-            $this->db->getDriver()->getConnection()->commit();
-            $this->db->getDriver()->getConnection()->disconnect();
+            $query = $this->db->prepare($sql);
+            $y = 0;
+            for($x =1; $x <= count($data); $x++){
+                $arg = mb_convert_encoding(mb_convert_case($value[$y],MB_CASE_UPPER, "UTF-8"),'ISO-8859-1', 'UTF-8');
+                $query->bindValue(":val".$x, $arg, \PDO::PARAM_STR);
+                $y++;
+            }
+            $query->bindParam(":valWhere", $whereValue[0], \PDO::PARAM_STR);
+            $query->execute();
+            Transaction::close();
 
-            return $update;
+            return true;
 
-        }catch (DBException $e){
-            $e->getTraceAsString();
-            $this->db->getDriver()->getConnection()->rollback();
+
+        }catch (PDOException $e){
+            echo $e->getTraceAsString();
+            Transaction::rollback();
         }
     }
+    */
 
     /**
      * delete detata registro
@@ -199,41 +212,29 @@ abstract class AbstractDB
     public function delete(Array $where = array())
     {
         try{
-            $this->db->getDriver()->getConnection()->connect();
-            $this->db->getDriver()->getConnection()->beginTransaction();
+            //Verifica se registro existe na base de dados
+            if ($this->findBy($where)){
 
-            $column = array_keys($where);
-            $value = array_values($where);
+                $column = array_keys($where);
+                $value = array_values($where);
 
-            $whereColumn = $column[0];
-            $whereValue = $value[0];
+                $whereColumn = $column[0];
+                $whereValue = $value[0];
 
-            //Comando SQL
-            $sql = "DELETE FROM {$this->table} WHERE {$whereColumn} = {$whereValue};";
+                //Comando SQL
+                $sql = "DELETE FROM {$this->table} WHERE {$whereColumn} = :val;";
 
-            //Executando SQL
-            $delete = $this->db->query($sql, Adapter::QUERY_MODE_EXECUTE);
-            $this->db->getDriver()->getConnection()->commit();
-            $this->db->getDriver()->getConnection()->disconnect();
+                //Executando SQL
+                $delete = $this->db->prepare($sql);
+                $delete->bindParam(":val", $whereValue, \PDO::PARAM_STR);
+                return $delete->execute();
+            }
 
-            if ($delete)
-                return true;
-            else
-                return false;
+            return false;
 
-        }catch (DBException $e){
-            $e->getTraceAsString();
-            $this->db->getDriver()->getConnection()->rollback();
+        }catch (PDOException $e){
+            echo $e->getTraceAsString();
+            Transaction::rollback();
         }
     }
-
-    /**
-     * @param $str
-     * @return mixed
-     */
-    public function quote($str)
-    {
-        return "'".str_replace("'", "''", $str)."'";
-    }
-
 }
